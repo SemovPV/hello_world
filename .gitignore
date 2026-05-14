@@ -1,45 +1,28 @@
 ```
-# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
 *.log
-.pytest_cache/
-.mypy_cache/
-
-# Database
-*.db
-instance/
-
-# Environment variables
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
 .env
 .env.local
 .env.*
-
-# Uploads directory (if it contains user uploads)
-static/uploads/
-
-# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
+node_modules/
+venv/
+.venv/
+dist/
+build/
+target/
+.gradle/
+.mypy_cache/
+.pytest_cache/
+coverage/
+htmlcov/
+.coverage
 ```

@@ -238,6 +238,83 @@ def new_story():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+@app.route('/story/view/<int:story_id>')
+@login_required
+def view_story(story_id):
+    story = Story.query.get_or_404(story_id)
+    
+    # Check if story is not expired
+    if story.expires_at <= datetime.utcnow():
+        flash('История истекла', 'error')
+        return redirect(url_for('index'))
+    
+    # Get next and previous stories for navigation
+    user_stories = Story.query.filter(
+        Story.user_id == story.user_id,
+        Story.expires_at > datetime.utcnow()
+    ).order_by(Story.created_at.desc()).all()
+    
+    story_index = next((i for i, s in enumerate(user_stories) if s.id == story_id), None)
+    
+    prev_story = None
+    next_story = None
+    
+    if story_index is not None:
+        if story_index > 0:
+            prev_story = user_stories[story_index - 1]
+        if story_index < len(user_stories) - 1:
+            next_story = user_stories[story_index + 1]
+    
+    return render_template('view_story.html', 
+                         story=story, 
+                         author=story.author,
+                         prev_story=prev_story,
+                         next_story=next_story)
+
+@app.route('/post/delete/<int:post_id>', methods=['POST'])
+@login_required
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    
+    # Only allow author to delete their own post
+    if post.user_id != current_user.id:
+        flash('Вы можете удалять только свои посты', 'error')
+        return redirect(url_for('index'))
+    
+    # Delete the image file
+    try:
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], post.image))
+    except:
+        pass
+    
+    db.session.delete(post)
+    db.session.commit()
+    
+    flash('Пост удален', 'success')
+    return redirect(url_for('profile', username=current_user.username))
+
+@app.route('/story/delete/<int:story_id>', methods=['POST'])
+@login_required
+def delete_story(story_id):
+    story = Story.query.get_or_404(story_id)
+    
+    # Only allow author to delete their own story
+    if story.user_id != current_user.id:
+        flash('Вы можете удалять только свои истории', 'error')
+        return redirect(url_for('index'))
+    
+    # Delete the image file
+    try:
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], story.image))
+    except:
+        pass
+    
+    db.session.delete(story)
+    db.session.commit()
+    
+    flash('История удалена', 'success')
+    return redirect(url_for('profile', username=current_user.username))
+
 # Initialize database
 with app.app_context():
     db.create_all()

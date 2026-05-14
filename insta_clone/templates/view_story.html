@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История - {{ author.username }} - InstaClone</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .story-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 100vh;
+            background: #000;
+        }
+        .story-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .story-header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+        .progress-bar-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 11;
+        }
+        .progress-item {
+            flex: 1;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: white;
+            width: 0%;
+            transition: width linear;
+        }
+        .profile-pic-small {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+            border: 2px solid white;
+        }
+        .username-text {
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        .time-text {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.8rem;
+            margin-left: 10px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            z-index: 10;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        .delete-btn {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(220, 39, 67, 0.9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            z-index: 10;
+            text-shadow: none;
+        }
+        .delete-btn:hover {
+            background: rgba(220, 39, 67, 1);
+        }
+        .nav-area {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 30%;
+            z-index: 5;
+            cursor: pointer;
+        }
+        .nav-prev {
+            left: 0;
+        }
+        .nav-next {
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="story-container">
+        <!-- Progress bars -->
+        <div class="progress-bar-container" id="progressBars">
+            <!-- Will be populated by JS -->
+        </div>
+
+        <!-- Header -->
+        <div class="story-header">
+            <img src="{{ url_for('uploaded_file', filename=author.profile_pic) }}" 
+                 alt="{{ author.username }}" class="profile-pic-small">
+            <span class="username-text">{{ author.username }}</span>
+            <span class="time-text">{{ story.created_at.strftime('%H:%M') }}</span>
+        </div>
+
+        <!-- Close button -->
+        <button class="close-btn" onclick="closeStory()">&times;</button>
+
+        <!-- Story Image -->
+        <img src="{{ url_for('uploaded_file', filename=story.image) }}" 
+             alt="Story" class="story-image" id="storyImage">
+
+        <!-- Navigation areas -->
+        {% if prev_story %}
+            <div class="nav-area nav-prev" onclick="goToPrevious()"></div>
+        {% endif %}
+        {% if next_story %}
+            <div class="nav-area nav-next" onclick="goToNext()"></div>
+        {% endif %}
+
+        <!-- Delete button (only for owner) -->
+        {% if current_user.id == author.id %}
+            <form action="{{ url_for('delete_story', story_id=story.id) }}" method="POST" style="display: inline;">
+                <button type="submit" class="delete-btn" onclick="return confirm('Удалить эту историю?')">
+                    🗑️ Удалить историю
+                </button>
+            </form>
+        {% endif %}
+    </div>
+
+    <script>
+        const storyId = {{ story.id }};
+        const prevStoryId = {{ prev_story.id if prev_story else 'null' }};
+        const nextStoryId = {{ next_story.id if next_story else 'null' }};
+        
+        // Auto-close after 5 seconds if no interaction
+        let autoCloseTimer;
+        
+        function resetAutoClose() {
+            clearTimeout(autoCloseTimer);
+            autoCloseTimer = setTimeout(() => {
+                if (nextStoryId) {
+                    goToNext();
+                } else {
+                    closeStory();
+                }
+            }, 5000);
+        }
+        
+        function closeStory() {
+            window.location.href = "{{ url_for('profile', username=author.username) }}";
+        }
+        
+        function goToPrevious() {
+            if (prevStoryId) {
+                window.location.href = `/story/view/${prevStoryId}`;
+            } else {
+                closeStory();
+            }
+        }
+        
+        function goToNext() {
+            if (nextStoryId) {
+                window.location.href = `/story/view/${nextStoryId}`;
+            } else {
+                closeStory();
+            }
+        }
+        
+        // Initialize progress bar animation
+        function initProgressBar() {
+            const container = document.getElementById('progressBars');
+            const totalStories = {{ (prev_story is not none) + 1 + (next_story is not none) }};
+            
+            // Create progress bars
+            for (let i = 0; i < totalStories; i++) {
+                const item = document.createElement('div');
+                item.className = 'progress-item';
+                const fill = document.createElement('div');
+                fill.className = 'progress-fill';
+                
+                // Current story index
+                const currentIndex = {{ 1 if prev_story is none else (1 if prev_story else 0) }};
+                
+                if (i < currentIndex) {
+                    fill.style.width = '100%';
+                } else if (i === currentIndex) {
+                    item.appendChild(fill);
+                    setTimeout(() => {
+                        fill.style.transition = 'width 5s linear';
+                        fill.style.width = '100%';
+                    }, 100);
+                }
+                
+                container.appendChild(item);
+            }
+        }
+        
+        // Click on image to pause/resume
+        let isPaused = false;
+        document.getElementById('storyImage').addEventListener('click', function() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                clearTimeout(autoCloseTimer);
+                const fills = document.querySelectorAll('.progress-fill');
+                fills.forEach(fill => {
+                    fill.style.transition = 'none';
+                });
+            } else {
+                resetAutoClose();
+                const fills = document.querySelectorAll('.progress-fill');
+                fills.forEach(fill => {
+                    if (fill.style.width !== '100%') {
+                        fill.style.transition = 'width 5s linear';
+                    }
+                });
+            }
+        });
+        
+        // Initialize
+        initProgressBar();
+        resetAutoClose();
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') {
+                goToPrevious();
+            } else if (e.key === 'ArrowRight') {
+                goToNext();
+            } else if (e.key === 'Escape') {
+                closeStory();
+            }
+        });
+    </script>
+</body>
+</html>
