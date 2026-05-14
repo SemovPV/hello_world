@@ -181,8 +181,15 @@
             <div class="stories-container">
                 {% for story in stories %}
                     <div class="story-item">
-                        <img src="{{ url_for('uploaded_file', filename=story.image) }}" 
-                             alt="Story" class="story-pic story-ring">
+                        <a href="{{ url_for('view_story', story_id=story.id) }}">
+                            <img src="{{ url_for('uploaded_file', filename=story.image) }}" 
+                                 alt="Story" class="story-pic story-ring">
+                        </a>
+                        {% if current_user.id == user.id %}
+                            <form action="{{ url_for('delete_story', story_id=story.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Удалить эту историю?')">
+                                <button type="submit" class="btn btn-sm btn-danger mt-1" style="font-size: 0.7rem;">🗑️</button>
+                            </form>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
@@ -207,6 +214,11 @@
                 {% for post in posts %}
                     <div class="post-grid-item">
                         <img src="{{ url_for('uploaded_file', filename=post.image) }}" alt="Post">
+                        {% if current_user.id == user.id %}
+                            <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="position: absolute; top: 5px; right: 5px; z-index: 10;" onsubmit="return confirm('Удалить этот пост?')">
+                                <button type="submit" class="btn btn-sm btn-danger" style="font-size: 0.7rem; opacity: 0.8;">🗑️</button>
+                            </form>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
